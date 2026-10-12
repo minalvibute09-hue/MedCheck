@@ -42,7 +42,9 @@ export async function answerHealthQuery(query, activeRecord, messages, language 
 
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(result.error || `Gemini request failed (${response.status}).`);
+    const error = new Error(result.error || `Gemini request failed (${response.status}).`);
+    error.status = response.status;
+    throw error;
   }
 
   if (typeof result.text !== 'string' || !result.text.trim()) {

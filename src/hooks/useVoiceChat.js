@@ -227,8 +227,10 @@ export default function useVoiceChat(onQuestion, language, t) {
             setError(translationsRef.current.errorVoiceSend);
             updateStatus('idle');
           }
-        } catch {
-          setError(translationsRef.current.errorVoiceSend);
+        } catch (sendError) {
+          setError(sendError?.status === 429
+            ? translationsRef.current.errorAiRateLimit
+            : translationsRef.current.errorVoiceSend);
           updateStatus('idle');
         }
       };

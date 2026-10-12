@@ -36,7 +36,7 @@ export async function answerWithGemini({ question, record, history, language, la
     });
     result = await geminiResponse.json();
 
-    const retryable = [429, 500, 502, 503, 504].includes(geminiResponse.status);
+    const retryable = [500, 502, 503, 504].includes(geminiResponse.status);
     if (geminiResponse.ok || !retryable || attempt === 2) break;
 
     const retryAfter = Number(geminiResponse.headers.get('retry-after'));
@@ -48,8 +48,11 @@ export async function answerWithGemini({ question, record, history, language, la
 
   if (!geminiResponse.ok) {
     console.error('Gemini API request failed:', geminiResponse.status, result.error?.message);
-    const error = new Error('The AI service could not answer right now. Please try again later.');
-    error.status = 502;
+    const isRateLimited = geminiResponse.status === 429;
+    const error = new Error(isRateLimited
+      ? 'The AI service has reached its request limit. Please wait and try again, or check your Gemini API quota.'
+      : 'The AI service could not answer right now. Please try again later.');
+    error.status = isRateLimited ? 429 : 502;
     throw error;
   }
 

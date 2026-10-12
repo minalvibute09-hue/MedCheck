@@ -48,10 +48,14 @@ export default function CopilotChat({
     }
   ]);
   const messagesEndRef = useRef(null);
+  const voiceRequestRef = useRef(false);
   const loadedConversationRef = useRef('');
   const [historyError, setHistoryError] = useState('');
   const voiceChat = useVoiceChat(
-    (question, language) => handleSend(question, language),
+    (question, language) => {
+      voiceRequestRef.current = true;
+      return handleSend(question, language);
+    },
     voiceLanguage,
     t
   );
@@ -127,11 +131,13 @@ export default function CopilotChat({
     } catch (error) {
       setMessages((prev) => [
         ...prev,
-        { sender: 'bot', text: t.chatFailed }
+        { sender: 'bot', text: error.status === 429 ? t.chatRateLimited : t.chatFailed }
       ]);
       console.error('Health Copilot request failed:', error);
+      if (voiceRequestRef.current) throw error;
       return null;
     } finally {
+      voiceRequestRef.current = false;
       setIsSending(false);
     }
   }
