@@ -2,16 +2,12 @@ import React from 'react';
 import { 
   Activity, 
   ShieldCheck, 
-  Globe, 
   Presentation, 
   Sparkles, 
-  Volume2, 
-  VolumeX,
   FileText,
-  ToggleLeft,
-  ToggleRight,
   Zap
 } from 'lucide-react';
+import { languageOptions } from '../data/languageOptions';
 
 export default function Header({ 
   currentLang, 
@@ -26,12 +22,6 @@ export default function Header({
   isSpeaking,
   onToggleSpeech
 }) {
-  const languageOptions = [
-    { code: 'en', label: 'English', locale: 'en' },
-    { code: 'hi', label: 'हिन्दी', locale: 'hi' },
-    { code: 'te', label: 'తెలుగు', locale: 'te' }
-  ];
-
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-sm transition-colors">
       
@@ -100,25 +90,17 @@ export default function Header({
               <span className="font-mono font-bold text-emerald-900 tracking-tight">91-5829-4012-8831</span>
             </button>
 
-            {/* 2. Live Segmented Language Switcher: English | తెలుగు | हिंदी (Required) */}
-            <div role="group" className="flex gap-0.5 rounded-xl border border-slate-300 bg-slate-100 p-1 text-base font-semibold" aria-label={t.languageLabel}>
-              {languageOptions.map((opt) => (
-                <button
-                  key={opt.code}
-                  onClick={() => setCurrentLang(opt.code)}
-                  lang={opt.locale}
-                  aria-label={opt.label}
-                  aria-pressed={currentLang === opt.code}
-                  className={`min-h-12 min-w-11 rounded-lg px-2 transition-colors cursor-pointer ${
-                    currentLang === opt.code
-                      ? 'border border-teal-800 bg-white font-bold text-teal-950'
-                      : 'text-slate-800 hover:bg-white'
-                  }`}
-                >
-                  {opt.label}
-                </button>
+            <label className="sr-only" htmlFor="app-language">{t.languageLabel}</label>
+            <select
+              id="app-language"
+              value={currentLang}
+              onChange={(event) => setCurrentLang(event.target.value)}
+              className="min-h-12 max-w-36 rounded-xl border border-slate-300 bg-white px-2 text-sm font-bold text-slate-900 shadow-sm transition-colors hover:border-teal-600 focus:border-teal-700 focus:outline-none focus:ring-4 focus:ring-teal-700/10 sm:max-w-44 sm:px-3 sm:text-base"
+            >
+              {languageOptions.map(({ code, native }) => (
+                <option key={code} value={code} lang={`${code}-IN`}>{native}</option>
               ))}
-            </div>
+            </select>
 
             {/* 3. Demo Mode Toggle Switch (Required) */}
             <button

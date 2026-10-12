@@ -13,6 +13,7 @@ import AuthScreen from './components/AuthScreen';
 import { sampleRecords } from './data/sampleRecords';
 import { translations } from './data/translations';
 import { defaultAbhaProfile } from './data/mockAbhaData';
+import { getLanguageLocale } from './data/languageOptions';
 import {
   clearAccessToken,
   getAccessToken,
@@ -86,7 +87,7 @@ function MedCheckDashboard({ currentUser, accessToken, conversationId, onLogout 
 
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(textToSpeak);
-    utterance.lang = currentLang === 'hi' ? 'hi-IN' : currentLang === 'te' ? 'te-IN' : 'en-IN';
+    utterance.lang = getLanguageLocale(currentLang);
     utterance.rate = 0.95;
 
     utterance.onend = () => setIsSpeaking(false);
@@ -158,14 +159,19 @@ function MedCheckDashboard({ currentUser, accessToken, conversationId, onLogout 
         isSpeaking={isSpeaking}
         onToggleSpeech={handleToggleSpeech}
       />
-      <PrimaryNavigation
-        activeSection={activeSection}
-        onNavigate={handleNavigate}
-        t={t}
-      />
+      <div className="mx-auto flex w-full max-w-[1600px] flex-1 items-start">
+        <PrimaryNavigation
+          activeSection={activeSection}
+          onNavigate={handleNavigate}
+          t={t}
+          currentUser={currentUser}
+          onOpenDoctorSummary={() => setIsDoctorSummaryOpen(true)}
+          onOpenAbhaModal={() => setIsAbhaModalOpen(true)}
+          onLogout={onLogout}
+        />
 
       {/* Main Container */}
-      <main className="mx-auto w-full max-w-7xl flex-1 space-y-5 px-4 py-5 sm:space-y-7 sm:px-6 sm:py-8 lg:px-8">
+      <main className="mx-auto w-full min-w-0 max-w-7xl flex-1 space-y-5 px-4 py-5 sm:space-y-7 sm:px-6 sm:py-8 lg:px-8">
         {recordsError && (
           <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-base text-amber-950">
             {recordsError}
@@ -178,8 +184,8 @@ function MedCheckDashboard({ currentUser, accessToken, conversationId, onLogout 
             
             {/* Patient Info */}
             <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-teal-800 text-xl font-extrabold text-white sm:h-14 sm:w-14">
-                RK
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-700 to-cyan-600 text-xl font-extrabold text-white ring-4 ring-teal-100 shadow-md sm:h-14 sm:w-14">
+                {currentUser.fullName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('')}
               </div>
 
               <div className="space-y-1">
@@ -208,7 +214,7 @@ function MedCheckDashboard({ currentUser, accessToken, conversationId, onLogout 
                 <button
                   type="button"
                   onClick={onLogout}
-                  className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-400 bg-white px-3 text-base font-semibold text-slate-900 hover:bg-slate-50"
+                  className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-400 bg-white px-3 text-base font-semibold text-slate-900 transition-colors hover:bg-slate-50 lg:hidden"
                 >
                   <LogOut aria-hidden="true" className="h-4 w-4" />
                   {t.signOut}
@@ -293,6 +299,7 @@ function MedCheckDashboard({ currentUser, accessToken, conversationId, onLogout 
         </div>
 
       </main>
+      </div>
 
       {/* Prominent Floating Voice Action Bar (Required) */}
       <VoiceActionBar
@@ -455,7 +462,15 @@ export default function App() {
   }
 
   if (!currentUser) {
-    return <AuthScreen t={t} onAuthenticated={handleAuthenticated} initialError={authError} />;
+    return (
+      <AuthScreen
+        t={t}
+        currentLang={currentLang}
+        setCurrentLang={setCurrentLang}
+        onAuthenticated={handleAuthenticated}
+        initialError={authError}
+      />
+    );
   }
 
   return (

@@ -12,12 +12,13 @@ import {
 import { answerHealthQuery } from '../services/copilotChat';
 import { getChatHistory } from '../services/api';
 import useVoiceChat from '../hooks/useVoiceChat';
+import { languageOptions } from '../data/languageOptions';
 
-const voiceLanguages = [
-  { locale: 'en-IN', appLanguage: 'en', label: 'English' },
-  { locale: 'hi-IN', appLanguage: 'hi', label: 'हिन्दी' },
-  { locale: 'te-IN', appLanguage: 'te', label: 'తెలుగు' }
-];
+const voiceLanguages = languageOptions.map(({ code, locale, native }) => ({
+  locale,
+  appLanguage: code,
+  label: native
+}));
 
 export default function CopilotChat({ 
   activeRecord, 
@@ -131,7 +132,14 @@ export default function CopilotChat({
     } catch (error) {
       setMessages((prev) => [
         ...prev,
-        { sender: 'bot', text: error.status === 429 ? t.chatRateLimited : t.chatFailed }
+        {
+          sender: 'bot',
+          text: error.status === 503
+            ? error.message || t.localAiUnavailable
+            : error.status === 429
+              ? t.chatRateLimited
+              : t.chatFailed
+        }
       ]);
       console.error('Health Copilot request failed:', error);
       if (voiceRequestRef.current) throw error;
@@ -268,7 +276,7 @@ export default function CopilotChat({
                 value={voiceLanguage}
                 onChange={(event) => setVoiceLanguage(event.target.value)}
                 disabled={voiceChat.status !== 'idle'}
-                className="min-h-12 max-w-[5.5rem] rounded-xl border border-slate-300 bg-white px-2 text-sm text-slate-900"
+                className="min-h-12 max-w-28 rounded-xl border border-slate-300 bg-white px-2 text-sm text-slate-900"
               >
                 {voiceLanguages.map(({ locale, label }) => (
                   <option key={locale} value={locale}>{label}</option>

@@ -38,7 +38,7 @@ export default function PitchPresentationModal({ isOpen, onClose }) {
               </div>
               <ul className="text-xs text-slate-600 space-y-1 list-disc list-inside">
                 <li>Document ingestion & raster preprocessing (contrast, deskew, segmentation).</li>
-                <li>Vision OCR engine (Gemini Multimodal VLM + Indian handwriting heuristics).</li>
+                <li>Local vision OCR engine (Ollama multimodal model + document preprocessing).</li>
                 <li>Medical NER entity parser (Brand-to-generic mapping, dosage, frequency).</li>
                 <li>Plain-language medical jargon simplification & abnormal range flagging.</li>
               </ul>
@@ -134,7 +134,7 @@ export default function PitchPresentationModal({ isOpen, onClose }) {
               </div>
               <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
                 <div className="text-blue-400 font-bold mb-1">2. OCR & VLM</div>
-                <div className="text-[11px] text-slate-300">Gemini Vision / Preprocessing / Bounding Box NER</div>
+                <div className="text-[11px] text-slate-300">Local Ollama Vision / Preprocessing / Extraction</div>
               </div>
               <div className="bg-slate-800/80 p-3 rounded-lg border border-slate-700">
                 <div className="text-blue-400 font-bold mb-1">3. REASONING</div>
@@ -252,7 +252,7 @@ export default function PitchPresentationModal({ isOpen, onClose }) {
               [0:40 - 1:40] Minute 2: Plain Language Summaries & Regional Voice Audio
             </span>
             <p className="text-slate-700 leading-relaxed">
-              "In milliseconds, our pipeline extracts the medicines, dosages, and abnormal values. Instead of jargon, MedCheck explains in plain language: 'Your 3-month sugar HbA1c is 8.2%, which is above the 7.0% goal.' Switch to Hindi or Telugu — the summary updates instantly, and an elderly user can click 'सुनिए (Audio)' to hear it spoken aloud via the browser Web Speech API!"
+              "In milliseconds, our pipeline extracts the medicines, dosages, and abnormal values. Instead of jargon, MedCheck explains in plain language: 'Your 3-month sugar HbA1c is 8.2%, which is above the 7.0% goal.' Switch among English, Hindi, Telugu, Tamil, Marathi, Bengali, Kannada, or Malayalam for AI chat, document summaries, and browser voice features."
             </p>
           </div>
 

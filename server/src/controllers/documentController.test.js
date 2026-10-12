@@ -29,7 +29,7 @@ after(async () => {
 });
 
 test('authenticated extraction handler saves structured document records to MongoDB', async () => {
-  process.env.GEMINI_API_KEY = 'synthetic-test-key';
+  process.env.OLLAMA_MODEL = 'test-vision-model';
   await initializeDatabase();
   databaseInitialized = true;
   await createUser({
@@ -40,15 +40,17 @@ test('authenticated extraction handler saves structured document records to Mong
   });
 
   globalThis.fetch = async () => new Response(JSON.stringify({
-    output_text: JSON.stringify({
-      readable: true,
-      doc_type: 'lab_report',
-      doc_date: '2026-06-10',
-      medicines: [{ name: 'Demo tablet', strength: '5 mg', frequency: 'once daily', duration: null, confidence: 'medium' }],
-      tests: [{ name: 'Demo test', value: 110, unit: 'mg/dL', reference_low: 70, reference_high: 100, confidence: 'high' }],
-      diagnoses: [],
-      summary: 'A demo report lists a test result. Please confirm with your doctor.'
-    })
+    message: {
+      content: JSON.stringify({
+        readable: true,
+        doc_type: 'lab_report',
+        doc_date: '2026-06-10',
+        medicines: [{ name: 'Demo tablet', strength: '5 mg', frequency: 'once daily', duration: null, confidence: 'medium' }],
+        tests: [{ name: 'Demo test', value: 110, unit: 'mg/dL', reference_low: 70, reference_high: 100, confidence: 'high' }],
+        diagnoses: [],
+        summary: 'A demo report lists a test result. Please confirm with your doctor.'
+      })
+    }
   }), { status: 200, headers: { 'content-type': 'application/json' } });
 
   const png = await sharp({

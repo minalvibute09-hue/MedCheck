@@ -14,9 +14,9 @@ MedCheck helps Indian families manage their parents’ health, even when records
 ## 🌟 Executive Overview & Hackathon Pitch
 
 **MedCheck AI** is an elite, modern AI health copilot engineered for Indian family caregivers. It solves the real-world friction of deciphering paper prescriptions and diagnostic lab sheets for aging parents:
-- **Scan & Understand:** Reads photos, handwriting, and PDFs with Gemini Vision. Extracted details include confidence indicators and should always be checked against the original.
+- **Scan & Understand:** Reads photos, handwriting, and PDFs with a local Ollama vision model. Extracted details include confidence indicators and should always be checked against the original.
 - **Side-by-Side MedCheck Comparator:** Deterministically checks multiple visits (e.g. *Doc 1 vs Doc 2*), highlighting dose differences and drug switches.
-- **Voice Readout (TTS):** Native Web Speech API audio in **Telugu, Hindi, and English**.
+- **Voice Readout (TTS):** Native Web Speech API audio in English, Hindi, Telugu, Tamil, Marathi, Bengali, Kannada, or Malayalam when browser voices are available.
 - **Longitudinal Timeline:** Graphs biomarkers over time (*HbA1c, Fasting Blood Sugar, Blood Pressure*).
 - **Zero Diagnosis Guarantee:** Strictly decision-support. Never diagnoses; empowers the family to consult their physician.
 
@@ -41,8 +41,8 @@ MedCheck helps Indian families manage their parents’ health, even when records
      - **Health Timeline Graph:** Interactive Recharts line chart plotting HbA1c, Fasting Glucose, and Blood Pressure curves.
 4. **Voice Action Bar:**
    - Prominent floating action bar:
-     - 🔊 **"Play Audio Summary":** Triggers instant browser text-to-speech in Telugu, Hindi, or English.
-   - The chat composer provides real voice questions and spoken answers in English, Hindi, and Telugu using the browser's built-in Web Speech API.
+     - 🔊 **"Play Audio Summary":** Uses built-in browser text-to-speech in English, Hindi, Telugu, Tamil, Marathi, Bengali, Kannada, or Malayalam when a matching browser voice is installed.
+   - The chat composer provides voice questions and spoken answers in those eight languages using the browser's built-in Web Speech API. Recognition and voice availability depend on the browser and installed language voices.
 5. **Doctor-Ready 1-Page Summary:**
    - Printable clinic visit summary sheet (`window.print()`).
 6. **Trust & Safety Footer:**
@@ -58,10 +58,16 @@ The existing React/Vite interface uses a separate Express API and MongoDB databa
 
 Switching from MySQL does not migrate any existing MySQL accounts, records, or chat messages. Those remain in the old MySQL database; users must register again in MongoDB unless you perform a separately planned data migration.
 
-1. Install and start **MongoDB Community Server** locally, or create a MongoDB Atlas cluster.
-2. Copy `server/.env.example` to `server/.env`. For a local installation, the default `MONGODB_URI=mongodb://127.0.0.1:27017/medcheck` works when MongoDB is running. For Atlas, replace it with your cluster connection string, database name `medcheck`, and credentials. Set `JWT_SECRET` to a unique random value at least 32 characters long, and configure `GEMINI_API_KEY` and `GEMINI_MODEL`. Do not commit either `.env` file.
+1. Install and start **MongoDB Community Server** locally, or create a MongoDB Atlas cluster. Install and start **Ollama** from [ollama.com/download](https://ollama.com/download).
+2. Copy `server/.env.example` to `server/.env`. For a local MongoDB installation, the default `MONGODB_URI=mongodb://127.0.0.1:27017/medcheck` works when MongoDB is running. For Atlas, replace it with your cluster connection string, database name `medcheck`, and credentials. Set `JWT_SECRET` to a unique random value at least 32 characters long. `OLLAMA_BASE_URL` and `OLLAMA_MODEL` select the local AI service and model. No Gemini API key is required. Do not commit `.env` files.
 
-3. From the project root, open two terminals:
+3. In a terminal, download the local vision/chat model:
+
+   ```powershell
+   ollama pull qwen2.5vl:3b
+   ```
+
+4. From the project root, open two terminals:
 
    ```powershell
    npm run dev:api
@@ -82,9 +88,9 @@ Models: server/src/models/
 
 Passwords are hashed with bcrypt; the browser stores a signed-in JWT in local storage. Private records and chat endpoints require that token. Use local/demo data only unless your deployment has appropriate consent, access controls, encryption, backups, and privacy review. Medical record JSON and chat messages contain sensitive information. This development setup is not a production deployment.
 
-### Gemini and voice
+### Local AI and voice
 
-The Express API sends chat questions, selected record context, and uploaded document content to Google Gemini for processing. Authenticated document uploads accept JPG, PNG, WebP, and PDF files up to 10 MB. Uploaded records are saved to MongoDB before being shown in the interface. Images are rotated using their EXIF orientation and resized before Gemini processing. Keep the API key only in server environment variables; never add it to browser code or a `VITE_` variable. Check extracted medicine names, doses, dates, and lab values against the scan; handwriting can be unclear and AI can make mistakes.
+The Express API sends chat questions and selected record context to the local Ollama server at `http://127.0.0.1:11434` by default. Uploaded records are processed by the locally running `qwen2.5vl:3b` vision-language model; images are rotated using their EXIF orientation and resized, and PDFs are rendered locally into page images (up to five pages per upload). JPG, PNG, WebP, and PDF uploads up to 10 MB are accepted. Extracted records and chat history continue to be saved to MongoDB. With the default local Ollama URL, prompts and document content stay on this computer for AI processing. If you change `OLLAMA_BASE_URL` to a remote server, that server receives the AI request. Check extracted medicine names, doses, dates, and lab values against the original; handwriting can be unclear and local AI can make mistakes. Model speed and quality depend on computer memory and hardware.
 
 Run focused document extraction tests with:
 
@@ -92,8 +98,8 @@ Run focused document extraction tests with:
 npm run test:scan
 ```
 
-Voice chat uses the browser's built-in Web Speech API and requires microphone permission in Chrome or Edge. Open the chat, select English, Hindi, or Telugu, tap the microphone, speak, and tap it again to finish. The chat answer is then read aloud; tap the speaking button to stop playback. If the microphone is blocked, allow it for the local site in browser settings and reload the page.
+Voice chat uses the browser's built-in Web Speech API and requires microphone permission in Chrome or Edge. Open the chat, choose one of English, Hindi, Telugu, Tamil, Marathi, Bengali, Kannada, or Malayalam, tap the microphone, speak, and tap it again to finish. The chat answer is then read aloud when the browser provides a matching speech voice; tap the speaking button to stop playback. Recognition and voice availability vary by browser and installed language support. If the microphone is blocked, allow it for the local site in browser settings and reload the page.
 
-For an existing local Gemini configuration, the API also reads the project-root `.env.local` as a fallback. Credentials in `server/.env` take priority.
+`OLLAMA_BASE_URL` and `OLLAMA_MODEL` can also be set in the project-root `.env.local`; values from `server/.env` take priority. Ollama must be running and the selected model must have been pulled before chat or scanning will work.
 
 *MedCheck AI — Built for the Altrix Labs AI Healthcare Hackathon.*

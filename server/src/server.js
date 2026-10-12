@@ -37,7 +37,9 @@ app.use((error, _req, res, _next) => {
   if (res.headersSent) return;
   const status = Number.isInteger(error.status) ? error.status : 500;
   res.status(status).json({
-    error: status >= 500 ? 'The server could not complete this request. Please try again.' : error.message
+    error: status >= 500 && !error.expose
+      ? 'The server could not complete this request. Please try again.'
+      : error.message
   });
 });
 

@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Noto Sans", "Noto Sans Devanagari", "Noto Sans Telugu", system-ui, sans-serif;
+  --font-sans: "Noto Sans", "Noto Sans Devanagari", "Noto Sans Telugu", "Noto Sans Kannada", "Noto Sans Malayalam", system-ui, sans-serif;
   --text-xs: 1rem;
   --text-sm: 1rem;
   --text-base: 1.125rem;
@@ -107,6 +107,15 @@
   background: var(--color-surface);
   border-color: var(--color-border);
   box-shadow: var(--shadow-card);
+  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .glass-card:hover {
+    transform: translateY(-2px);
+    border-color: #a8cfcc;
+    box-shadow: 0 14px 32px rgb(23 51 58 / 11%);
+  }
 }
 
 .glass-panel {

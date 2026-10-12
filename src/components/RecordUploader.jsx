@@ -12,6 +12,7 @@ import {
 import { sampleRecords } from '../data/sampleRecords';
 import { extractMedicalDocument } from '../services/api';
 import { Skeleton } from './ui/Skeleton';
+import { getLanguageLocale } from '../data/languageOptions';
 
 const sampleButtons = [
   {
@@ -172,7 +173,7 @@ export default function RecordUploader({
     try {
       setProgressStep(t.processingExtract);
       setProgressStep(t.processingValidate);
-      const language = { en: 'en-IN', hi: 'hi-IN', te: 'te-IN' }[currentLang] || 'en-IN';
+      const language = getLanguageLocale(currentLang);
       const result = await extractMedicalDocument(accessToken, file, language);
       if (!result.readable) {
         setUploadError(t.uploadUnreadable);
