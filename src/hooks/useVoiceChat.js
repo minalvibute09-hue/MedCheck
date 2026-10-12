@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 function cleanSpeechText(text) {
   return text
@@ -93,13 +93,14 @@ export default function useVoiceChat(onQuestion, language, t) {
   const speechRunRef = useRef(0);
   const suppressEndRef = useRef(false);
   const translationsRef = useRef(t);
+  const mountedRef = useRef(true);
 
   callbackRef.current = onQuestion;
   translationsRef.current = t;
 
   const updateStatus = useCallback((nextStatus) => {
     statusRef.current = nextStatus;
-    setStatus(nextStatus);
+    if (mountedRef.current) setStatus(nextStatus);
   }, []);
 
   const stopSpeaking = useCallback(() => {
@@ -119,6 +120,7 @@ export default function useVoiceChat(onQuestion, language, t) {
     speechRunRef.current += 1;
     const runId = speechRunRef.current;
     speechSynthesis.cancel();
+    speechSynthesis.resume();
     const voices = speechSynthesis.getVoices();
     const voice = voices.find((item) => item.lang.toLowerCase() === locale.toLowerCase()) ||
       voices.find((item) => item.lang.toLowerCase().startsWith(locale.slice(0, 2).toLowerCase()));
@@ -144,10 +146,23 @@ export default function useVoiceChat(onQuestion, language, t) {
         updateStatus('idle');
       };
       speechSynthesis.speak(utterance);
+      speechSynthesis.resume();
     };
 
     speakChunk(0);
   }, [updateStatus]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      suppressEndRef.current = true;
+      recognitionRef.current?.abort();
+      recognitionRef.current = null;
+      speechRunRef.current += 1;
+      window.speechSynthesis?.cancel();
+    };
+  }, []);
 
   const startListening = useCallback(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -209,6 +224,7 @@ export default function useVoiceChat(onQuestion, language, t) {
             await new Promise((resolve) => window.requestAnimationFrame(resolve));
             speakAnswer(answer, language);
           } else {
+            setError(translationsRef.current.errorVoiceSend);
             updateStatus('idle');
           }
         } catch {

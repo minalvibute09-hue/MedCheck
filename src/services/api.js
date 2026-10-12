@@ -69,6 +69,14 @@ export function saveMedicalRecord(token, record) {
   });
 }
 
+export function extractMedicalDocument(token, document) {
+  return request('/records/extract', {
+    method: 'POST',
+    token,
+    body: JSON.stringify(document)
+  });
+}
+
 export function getChatHistory(token, conversationId) {
   const params = new URLSearchParams({ conversationId });
   return request(`/chat/history?${params}`, { token });

@@ -2,21 +2,15 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   UploadCloud, 
   Sparkles, 
-  Key, 
   CheckCircle2, 
   FileSpreadsheet,
   Stethoscope,
   Building2,
   Languages,
-  FileUp,
-  Image as ImageIcon,
-  Check,
-  Eye,
-  Camera,
-  Cpu
+  Camera
 } from 'lucide-react';
 import { sampleRecords } from '../data/sampleRecords';
-import { processMedicalDocument } from '../services/ocrExtractor';
+import { extractMedicalDocument } from '../services/api';
 import { Skeleton } from './ui/Skeleton';
 
 const sampleButtons = [
@@ -62,13 +56,12 @@ export default function RecordUploader({
   onRecordSelected, 
   activeRecordId, 
   t,
-  isDemoMode 
+  isDemoMode,
+  accessToken
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressStep, setProgressStep] = useState("");
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [apiKey, setApiKey] = useState("");
   const [previewUrl, setPreviewUrl] = useState('');
   const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef(null);
@@ -93,52 +86,56 @@ export default function RecordUploader({
 
   const handleFileUpload = async (file) => {
     if (!file) return;
+    if (file.size > 8 * 1024 * 1024) {
+      setUploadError(t.uploadTooLarge);
+      return;
+    }
+    const extensionMimeTypes = {
+      pdf: 'application/pdf',
+      txt: 'text/plain',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      webp: 'image/webp'
+    };
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    const mimeType = file.type || extensionMimeTypes[extension] || '';
+    if (!['application/pdf', 'text/plain', 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'].includes(mimeType)) {
+      setUploadError(t.uploadFailed);
+      return;
+    }
     setUploadError('');
     setPreviewUrl(file.type.startsWith('image/') ? URL.createObjectURL(file) : '');
     setIsProcessing(true);
     setProgressStep(t.readingDocument);
 
     try {
-      await new Promise(r => setTimeout(r, 600));
       setProgressStep(t.processingExtract);
-      
-      await new Promise(r => setTimeout(r, 600));
-      setProgressStep(t.processingValidate);
-
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const textContent = e.target.result;
-          const parsedRecord = await processMedicalDocument(
-            typeof textContent === 'string' && textContent.length < 50000 
-              ? textContent 
-              : `Uploaded Document: ${file.name}\nPatient: Rahul Kumar Sharma\nDate: ${new Date().toISOString().split('T')[0]}\nPrescribed: Tab. Metformin 500mg (1-0-1 After food), Tab. Telmisartan 40mg (1-0-0)\nLab Test: HbA1c 8.0 % (High), Fasting Blood Sugar 142 mg/dL (High)\nDiagnosis: Type 2 Diabetes Mellitus, Essential Hypertension`,
-            { name: file.name, type: file.type },
-            apiKey
-          );
-
-          setIsProcessing(false);
-          onRecordSelected(parsedRecord);
-        } catch (error) {
-          console.error('Document extraction failed:', error);
-          setIsProcessing(false);
-          setUploadError(t.uploadFailed);
-        }
-      };
-      reader.onerror = () => {
-        setIsProcessing(false);
-        setUploadError(t.uploadFailed);
-      };
-
-      if (file.type.includes('text')) {
-        reader.readAsText(file);
+      let document;
+      if (mimeType === 'text/plain') {
+        document = { fileName: file.name, mimeType, text: await file.text() };
       } else {
-        reader.readAsDataURL(file);
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        let binary = '';
+        const chunkSize = 0x8000;
+        for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+          binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+        }
+        document = {
+          fileName: file.name,
+          mimeType,
+          data: window.btoa(binary)
+        };
       }
+
+      setProgressStep(t.processingValidate);
+      const { record } = await extractMedicalDocument(accessToken, document);
+      onRecordSelected(record);
     } catch (err) {
-      console.error('Document upload failed:', err);
+      console.error('Document extraction failed:', err);
+      setUploadError(err.message || t.uploadFailed);
+    } finally {
       setIsProcessing(false);
-      setUploadError(t.uploadFailed);
     }
   };
 
@@ -165,32 +162,7 @@ export default function RecordUploader({
           </p>
         </div>
 
-        <button
-          onClick={() => setShowApiKey(!showApiKey)}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-800 shadow-sm transition-colors hover:bg-slate-50"
-        >
-          <Key className="w-3 h-3 text-[#0EA5E9]" />
-          <span>{apiKey ? t.apiKeyActive : t.aiSettings}</span>
-        </button>
       </div>
-
-      {showApiKey && (
-        <div className="space-y-2 rounded-xl border border-slate-300 bg-slate-50 p-4 text-base">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-slate-800">{t.geminiKeyOptional}</span>
-            <span className="text-[10px] font-semibold text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">
-              {t.zeroConfig}
-            </span>
-          </div>
-          <input
-            type="password"
-            placeholder={t.apiKeyPlaceholder}
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-[#0EA5E9]/20 focus:border-[#0EA5E9] outline-none"
-          />
-        </div>
-      )}
 
       {/* Drag & Drop Upload Zone with Animated Laser Scanning Border (Required) */}
       <div

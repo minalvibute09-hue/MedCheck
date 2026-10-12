@@ -249,6 +249,7 @@ function MedCheckDashboard({ currentUser, accessToken, conversationId, onLogout 
               activeRecordId={activeRecord?.id}
               t={t}
               isDemoMode={isDemoMode}
+              accessToken={accessToken}
             />
 
             {/* Caregiver Quick Action Card */}

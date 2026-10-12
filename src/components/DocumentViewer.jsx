@@ -72,6 +72,11 @@ export default function DocumentViewer({ record, t }) {
 
       {/* Content Area */}
       <div className="p-6">
+        {record.extractionNotice && (
+          <p role="note" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-base font-medium text-amber-950">
+            {t.extractionReviewNotice}
+          </p>
+        )}
         {activeTab === 'raw' ? (
           <div>
             <div className="mb-2.5 text-base text-slate-700">
@@ -93,7 +98,18 @@ export default function DocumentViewer({ record, t }) {
                 {record.diagnoses?.map((d, i) => (
                   <li key={i} className="bg-white p-3 rounded-lg border border-slate-200 shadow-soft-xs">
                     <p className="font-bold text-slate-900">{d.name}</p>
-                    <p className="mt-1 text-base text-slate-700">ICD-10: {d.icd10} | SCT: {d.snomedCode}</p>
+                    {(d.icd10 || d.snomedCode) && (
+                      <p className="mt-1 text-base text-slate-700">
+                        {[d.icd10 && `ICD-10: ${d.icd10}`, d.snomedCode && `SCT: ${d.snomedCode}`]
+                          .filter(Boolean)
+                          .join(' | ')}
+                      </p>
+                    )}
+                    {d.confidence && d.confidence !== 'high' && (
+                      <span className="mt-2 inline-block rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-sm font-semibold text-amber-950">
+                        {t.checkExtractedValue}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -108,8 +124,18 @@ export default function DocumentViewer({ record, t }) {
                 {record.medications?.map((m, i) => (
                   <li key={i} className="bg-white p-3 rounded-lg border border-slate-200 shadow-soft-xs">
                     <p className="font-bold text-slate-900">{m.name}</p>
-                    <p className="text-base font-medium text-teal-900">{m.dosage} · {m.frequency}</p>
-                    <p className="mt-0.5 text-base text-slate-700">{m.timing}</p>
+                    {(m.dosage || m.frequency) && (
+                      <p className="text-base font-medium text-teal-900">
+                        {[m.dosage, m.frequency].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                    {m.timing && <p className="mt-0.5 text-base text-slate-700">{m.timing}</p>}
+                    {m.duration && <p className="mt-0.5 text-base text-slate-700">{m.duration}</p>}
+                    {m.confidence && m.confidence !== 'high' && (
+                      <span className="mt-2 inline-block rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-sm font-semibold text-amber-950">
+                        {t.checkExtractedValue}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -126,21 +152,34 @@ export default function DocumentViewer({ record, t }) {
                     <li key={i} className="bg-white p-3 rounded-lg border border-slate-200 shadow-soft-xs flex items-center justify-between">
                       <div>
                         <p className="font-semibold text-slate-800">{l.testName}</p>
-                        <p className="text-[10px] text-slate-500 font-mono">LOINC: {l.loincCode}</p>
+                        {l.loincCode && <p className="text-[10px] text-slate-500 font-mono">LOINC: {l.loincCode}</p>}
+                        {l.referenceRange && <p className="text-sm text-slate-700">{l.referenceRange}</p>}
                       </div>
                       <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-base font-bold ${
                         l.status === 'High'
                           ? 'border-rose-300 bg-rose-50 text-rose-950'
-                          : l.status === 'Low'
+                          : l.status === 'Low' || l.status === 'Unknown'
                             ? 'border-amber-300 bg-amber-50 text-amber-950'
                             : 'border-emerald-300 bg-emerald-50 text-emerald-950'
                       }`}>
-                        {l.status === 'High' || l.status === 'Low'
+                        {l.status !== 'Normal'
                           ? <AlertTriangle aria-hidden="true" className="h-4 w-4" />
                           : <CheckCircle2 aria-hidden="true" className="h-4 w-4" />}
-                        {l.status === 'High' ? t.statusHigh : l.status === 'Low' ? t.statusLow : t.normal}
-                        · {l.value} {l.unit}
+                        {l.status === 'High'
+                          ? t.statusHigh
+                          : l.status === 'Low'
+                            ? t.statusLow
+                            : l.status === 'Unknown'
+                              ? t.statusUnknown
+                              : t.normal}
+                        {l.value && ` · ${l.value}`}
+                        {l.unit && ` ${l.unit}`}
                       </span>
+                      {l.confidence && l.confidence !== 'high' && (
+                        <span className="mt-2 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-sm font-semibold text-amber-950">
+                          {t.checkExtractedValue}
+                        </span>
+                      )}
                     </li>
                   ))
                 ) : (

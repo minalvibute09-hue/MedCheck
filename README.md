@@ -14,7 +14,7 @@ MedCheck helps Indian families manage their parents’ health, even when records
 ## 🌟 Executive Overview & Hackathon Pitch
 
 **MedCheck AI** is an elite, modern AI health copilot engineered for Indian family caregivers. It solves the real-world friction of deciphering paper prescriptions and diagnostic lab sheets for aging parents:
-- **Scan & Understand:** Ingests paper scans, photos, and PDFs, translating medical jargon into plain words with out-of-range values highlighted.
+- **Scan & Understand:** Reads photos, handwriting, and PDFs with Gemini Vision. Extracted details include confidence indicators and should always be checked against the original.
 - **Side-by-Side MedCheck Comparator:** Deterministically checks multiple visits (e.g. *Doc 1 vs Doc 2*), highlighting dose differences and drug switches.
 - **Voice Readout (TTS):** Native Web Speech API audio in **Telugu, Hindi, and English**.
 - **Longitudinal Timeline:** Graphs biomarkers over time (*HbA1c, Fasting Blood Sugar, Blood Pressure*).
@@ -31,7 +31,7 @@ MedCheck helps Indian families manage their parents’ health, even when records
 2. **Navigation & Controls:**
    - **ABHA Linked Badge:** Prominently displays `91-5829-4012-8831` with a pulsing live sync indicator.
    - **Segmented Language Switcher:** Live 1-click toggle for **English | తెలుగు | हिंदी**.
-   - **Demo Mode Toggle:** Instant switch between curated benchmark paper records and live AI vision mode.
+   - **Sample Records:** One-click fictional examples for trying the interface.
 3. **Split-Screen Dashboard Layout:**
    - **Left Column:** Drag-and-drop file upload zone with **animated laser scanning borders**, document preview, and 1-click benchmark records.
    - **Right Column (MedCheck Intelligence Panel):**
@@ -84,7 +84,9 @@ Passwords are hashed with bcrypt; the browser stores a signed-in JWT in local st
 
 ### Gemini and voice
 
-The Express API sends chat questions and selected record context to Google Gemini. Keep the API key only in server environment variables; never add it to browser code or a `VITE_` variable. Voice chat uses the browser's built-in Web Speech API and requires microphone permission in Chrome or Edge.
+The Express API sends chat questions, selected record context, and uploaded document content to Google Gemini for processing. Document uploads are limited to 8 MB. Keep the API key only in server environment variables; never add it to browser code or a `VITE_` variable. Check extracted medicine names, doses, dates, and lab values against the scan; handwriting can be unclear and AI can make mistakes.
+
+Voice chat uses the browser's built-in Web Speech API and requires microphone permission in Chrome or Edge. Open the chat, select English, Hindi, or Telugu, tap the microphone, speak, and tap it again to finish. The chat answer is then read aloud; tap the speaking button to stop playback. If the microphone is blocked, allow it for the local site in browser settings and reload the page.
 
 For an existing local Gemini configuration, the API also reads the project-root `.env.local` as a fallback. Credentials in `server/.env` take priority.
 
