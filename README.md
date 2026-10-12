@@ -1,4 +1,6 @@
 # 🩺 MedCheck AI
+MedCheck helps Indian families manage their parents’ health, even when records are on paper. Users photograph a report or prescription, and the app explains it in simple Hindi, Telugu, or English, with voice. It tracks results over time and compares medicine documents, highlighting differences for a doctor or pharmacist to verify.
+
 > **One-line Tagline:**  
 > **MedCheck : an AI health copilot that explains medical records in your family’s language and flags medicine conflicts, without ever diagnosing.**
 
