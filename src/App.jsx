@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { LogOut } from 'lucide-react';
 import Header from './components/Header';
 import RecordUploader from './components/RecordUploader';
 import IntelligencePanel from './components/IntelligencePanel';
@@ -8,9 +9,18 @@ import AbhaManager from './components/AbhaManager';
 import CopilotChat from './components/CopilotChat';
 import PitchPresentationModal from './components/PitchPresentationModal';
 import PrimaryNavigation from './components/PrimaryNavigation';
+import AuthScreen from './components/AuthScreen';
 import { sampleRecords } from './data/sampleRecords';
 import { translations } from './data/translations';
 import { defaultAbhaProfile } from './data/mockAbhaData';
+import {
+  clearAccessToken,
+  getAccessToken,
+  getCurrentUser,
+  getMedicalRecords,
+  saveMedicalRecord,
+  storeAccessToken
+} from './services/api';
 import { 
   ShieldCheck, 
   Sparkles, 
@@ -20,11 +30,15 @@ import {
   FileText
 } from 'lucide-react';
 
-export default function App() {
+function MedCheckDashboard({ currentUser, accessToken, conversationId, onLogout }) {
   const [currentLang, setCurrentLang] = useState('en');
   const [activeRecord, setActiveRecord] = useState(sampleRecords[0]);
   const [recordsList, setRecordsList] = useState(sampleRecords);
-  const [abhaProfile, setAbhaProfile] = useState(defaultAbhaProfile);
+  const [abhaProfile, setAbhaProfile] = useState(() => ({
+    ...defaultAbhaProfile,
+    fullName: currentUser.fullName
+  }));
+  const [recordsError, setRecordsError] = useState('');
   const [isDemoMode, setIsDemoMode] = useState(true);
   const [isAbhaModalOpen, setIsAbhaModalOpen] = useState(false);
   const [isPitchModalOpen, setIsPitchModalOpen] = useState(false);
@@ -35,6 +49,24 @@ export default function App() {
   const [isChatOpen, setIsChatOpen] = useState(false);
 
   const t = translations[currentLang] || translations.en;
+
+  useEffect(() => {
+    let isMounted = true;
+    getMedicalRecords(accessToken)
+      .then(({ records }) => {
+        if (!isMounted) return;
+        setRecordsList((current) => {
+          const recordsById = new Map(current.map((record) => [record.id, record]));
+          records.forEach((record) => recordsById.set(record.id, record));
+          return [...recordsById.values()];
+        });
+      })
+      .catch((error) => {
+        console.error('Could not load saved medical records:', error);
+        if (isMounted) setRecordsError(t.recordsSyncFailed);
+      });
+    return () => { isMounted = false; };
+  }, [accessToken, t.recordsSyncFailed]);
 
   // Web Speech API Text-to-Speech Handler
   const handleToggleSpeech = () => {
@@ -68,6 +100,12 @@ export default function App() {
     setActiveRecord(record);
     if (!recordsList.some(r => r.id === record.id)) {
       setRecordsList(prev => [record, ...prev]);
+    }
+    if (!sampleRecords.some((sample) => sample.id === record.id)) {
+      saveMedicalRecord(accessToken, record).catch((error) => {
+        console.error('Could not save medical record:', error);
+        setRecordsError(t.recordsSyncFailed);
+      });
     }
   };
 
@@ -127,6 +165,11 @@ export default function App() {
 
       {/* Main Container */}
       <main className="mx-auto w-full max-w-7xl flex-1 space-y-5 px-4 py-5 sm:space-y-7 sm:px-6 sm:py-8 lg:px-8">
+        {recordsError && (
+          <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-base text-amber-950">
+            {recordsError}
+          </p>
+        )}
         
         {/* Patient Dossier Header Card (Glassmorphism) */}
         <div className="glass-card rounded-2xl p-5 transition-all sm:p-7">
@@ -160,6 +203,15 @@ export default function App() {
                   <Sparkles className="w-3.5 h-3.5 text-[#0EA5E9] shrink-0" />
                   {t.primaryConditions}
                 </p>
+                <p className="text-base text-slate-700">{currentUser.email}</p>
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-400 bg-white px-3 text-base font-semibold text-slate-900 hover:bg-slate-50"
+                >
+                  <LogOut aria-hidden="true" className="h-4 w-4" />
+                  {t.signOut}
+                </button>
               </div>
             </div>
 
@@ -281,6 +333,8 @@ export default function App() {
         activeRecord={activeRecord}
         t={t}
         currentLang={currentLang}
+        accessToken={accessToken}
+        conversationId={conversationId}
         isOpen={isChatOpen}
         onOpenChange={setIsChatOpen}
       />
@@ -316,5 +370,97 @@ export default function App() {
         mobile
       />
     </div>
+  );
+}
+
+function conversationIdForUser(userId) {
+  const key = `medcheck.conversation.${userId}`;
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
+
+export default function App() {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [accessToken, setAccessToken] = useState('');
+  const [conversationId, setConversationId] = useState('');
+  const [currentLang, setCurrentLang] = useState('en');
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
+  const t = translations[currentLang] || translations.en;
+
+  useEffect(() => {
+    function handleUnauthorized() {
+      setAccessToken('');
+      setCurrentUser(null);
+      setConversationId('');
+    }
+    window.addEventListener('medcheck:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('medcheck:unauthorized', handleUnauthorized);
+  }, []);
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) {
+      setAuthLoading(false);
+      return undefined;
+    }
+
+    let isMounted = true;
+    getCurrentUser(token)
+      .then(({ user }) => {
+        if (!isMounted) return;
+        setAccessToken(token);
+        setCurrentUser(user);
+        setConversationId(conversationIdForUser(user.id));
+      })
+      .catch((error) => {
+        console.error('Could not restore the signed-in session:', error);
+        if (isMounted) setAuthError(error.message);
+      })
+      .finally(() => {
+        if (isMounted) setAuthLoading(false);
+      });
+
+    return () => { isMounted = false; };
+  }, []);
+
+  function handleAuthenticated({ token, user }) {
+    storeAccessToken(token);
+    setAccessToken(token);
+    setCurrentUser(user);
+    setConversationId(conversationIdForUser(user.id));
+    setAuthError('');
+  }
+
+  function handleLogout() {
+    clearAccessToken();
+    setAccessToken('');
+    setCurrentUser(null);
+    setConversationId('');
+  }
+
+  if (authLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[var(--color-canvas)] p-6">
+        <p className="text-lg font-semibold text-slate-900" role="status">{t.pleaseWait}</p>
+      </main>
+    );
+  }
+
+  if (!currentUser) {
+    return <AuthScreen t={t} onAuthenticated={handleAuthenticated} initialError={authError} />;
+  }
+
+  return (
+    <MedCheckDashboard
+      currentUser={currentUser}
+      accessToken={accessToken}
+      conversationId={conversationId}
+      onLogout={handleLogout}
+    />
   );
 }

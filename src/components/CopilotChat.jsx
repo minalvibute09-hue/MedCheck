@@ -10,6 +10,7 @@ import {
   VolumeX
 } from 'lucide-react';
 import { answerHealthQuery } from '../services/copilotChat';
+import { getChatHistory } from '../services/api';
 import useVoiceChat from '../hooks/useVoiceChat';
 
 const voiceLanguages = [
@@ -22,6 +23,8 @@ export default function CopilotChat({
   activeRecord, 
   t,
   currentLang,
+  accessToken,
+  conversationId,
   isOpen: isOpenProp,
   onOpenChange
 }) {
@@ -45,6 +48,8 @@ export default function CopilotChat({
     }
   ]);
   const messagesEndRef = useRef(null);
+  const loadedConversationRef = useRef('');
+  const [historyError, setHistoryError] = useState('');
   const voiceChat = useVoiceChat(
     (question, language) => handleSend(question, language),
     voiceLanguage,
@@ -74,6 +79,30 @@ export default function CopilotChat({
     ));
   }, [t]);
 
+  useEffect(() => {
+    if (!isOpen || !accessToken || !conversationId || loadedConversationRef.current === conversationId) return undefined;
+
+    let isMounted = true;
+    getChatHistory(accessToken, conversationId)
+      .then(({ messages: savedMessages }) => {
+        if (!isMounted) return;
+        loadedConversationRef.current = conversationId;
+        setMessages((previous) => [
+          previous[0],
+          ...savedMessages.map((message) => ({
+            sender: message.role === 'user' ? 'user' : 'bot',
+            text: message.content
+          }))
+        ]);
+      })
+      .catch((error) => {
+        console.error('Could not load saved chat history:', error);
+        if (isMounted) setHistoryError(t.chatHistoryFailed);
+      });
+
+    return () => { isMounted = false; };
+  }, [accessToken, conversationId, isOpen, t.chatHistoryFailed]);
+
   async function handleSend(textToSend = null, language = currentLang) {
     const query = (textToSend ?? input).trim();
     if (!query || isSending) return;
@@ -85,7 +114,14 @@ export default function CopilotChat({
     setIsSending(true);
 
     try {
-      const response = await answerHealthQuery(query, activeRecord, history, language);
+      const response = await answerHealthQuery(
+        query,
+        activeRecord,
+        history,
+        language,
+        accessToken,
+        conversationId
+      );
       setMessages((prev) => [...prev, { sender: 'bot', text: response }]);
       return response;
     } catch (error) {
@@ -159,6 +195,7 @@ export default function CopilotChat({
 
           {/* Messages Body */}
           <div className="flex-1 space-y-4 overflow-y-auto bg-slate-50 p-4 text-base">
+            {historyError && <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-base text-amber-950">{historyError}</p>}
             {messages.map((m, idx) => (
               <div
                 key={idx}

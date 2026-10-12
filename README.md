@@ -52,37 +52,45 @@ MedCheck helps Indian families manage their parents’ health, even when records
 
 ## 🚀 How to Run
 
-### Enable Ask Health Copilot with Gemini
+### MySQL-backed accounts, records, and chat
 
-1. Copy `.env.example` to `.env.local` in the project root.
-2. Replace the placeholder with your Gemini API key:
+The existing React/Vite interface now uses a separate Express API. The API creates the `medcheck` database on first start when its MySQL user has permission, and creates the tables. It stores registered accounts, uploaded/extracted record JSON, and chat messages. Demo records remain fictional and are not copied into the database automatically.
 
-   ```env
-   GEMINI_API_KEY=your_actual_key
-   GEMINI_MODEL=gemini-3.8-flash
+1. Install and start **MySQL 8.0+** locally. In MySQL Workbench or the MySQL shell, create a database and a dedicated local account. For example, change the placeholder password before running:
+
+   ```sql
+   CREATE DATABASE medcheck CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+   CREATE USER 'medcheck_app'@'127.0.0.1' IDENTIFIED BY 'choose_a_local_password';
+   GRANT ALL PRIVILEGES ON medcheck.* TO 'medcheck_app'@'127.0.0.1';
    ```
 
-   Keep the key private. Do not put it in `src/`, a `VITE_` variable, or a public repository. Set the model name in `GEMINI_MODEL` as well.
-3. Restart the development server after saving `.env.local`:
+   (If you use a MySQL administrator account in `server/.env` for a local-only demo, the API can create the database itself.)
+2. Copy `server/.env.example` to `server/.env`, then set `MYSQL_USER`, `MYSQL_PASSWORD`, `JWT_SECRET`, `GEMINI_API_KEY`, and `GEMINI_MODEL`. Use a unique random `JWT_SECRET` with at least 32 characters. Do not commit either `.env` file.
+3. From the project root, open two terminals:
 
-   ```bash
+   ```powershell
+   npm run dev:api
+   ```
+
+   ```powershell
    npm run dev
    ```
 
-4. Open the app, select **Ask Health Copilot**, and submit a question.
+   (The same commands work in other shells.)
 
-The local Vite development server sends questions to Gemini from its server-side endpoint, so the API key is not sent to the browser. Questions and selected-record details are sent to Google Gemini; do not use real patient information unless you have the required consent and are comfortable with Google's data handling. This development endpoint is not included in the static production build. A deployed app needs an equivalent protected server-side API endpoint.
+4. Open `http://localhost:5173/`, create an account, and sign in. The Vite development server proxies `/api` calls to Express at `http://localhost:5000`.
 
-### Voice chat
-
-Open **Ask Health Copilot**, choose English, Hindi, or Telugu, and tap the microphone beside the message box. Speak your question; the answer is added to chat and read aloud. Use the same button while listening to finish your question or while audio is playing to stop it. Voice chat uses the browser's built-in Web Speech API and requires microphone permission in Chrome or Edge.
-
-```bash
-# Development server (Already running live!)
-npm run dev
-
-# Open in browser:
-# http://localhost:5173/
+```text
+Tables: users, medical_records, chat_messages
+Schema: server/database/schema.sql
 ```
+
+Passwords are hashed with bcrypt; the browser stores a signed-in JWT in local storage. Private records and chat endpoints require that token. Use local/demo data only unless your deployment has appropriate consent, access controls, encryption, backups, and privacy review. Medical record JSON and chat messages contain sensitive information. This development setup is not a production deployment.
+
+### Gemini and voice
+
+The Express API sends chat questions and selected record context to Google Gemini. Keep the API key only in server environment variables; never add it to browser code or a `VITE_` variable. Voice chat uses the browser's built-in Web Speech API and requires microphone permission in Chrome or Edge.
+
+For an existing local Gemini configuration, the API also reads the project-root `.env.local` as a fallback. Credentials in `server/.env` take priority.
 
 *MedCheck AI — Built for the Altrix Labs AI Healthcare Hackathon.*

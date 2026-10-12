@@ -20,13 +20,17 @@ function getRecordContext(record) {
   };
 }
 
-export async function answerHealthQuery(query, activeRecord, messages, language = 'en') {
+export async function answerHealthQuery(query, activeRecord, messages, language = 'en', token, conversationId) {
   const languageLocales = { en: 'en-IN', hi: 'hi-IN', te: 'te-IN' };
-  const response = await fetch('/api/ask-ai', {
+  const response = await fetch('/api/chat/ask', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
     body: JSON.stringify({
       question: query,
+      conversationId,
       record: getRecordContext(activeRecord),
       history: messages
         .filter((message) => message.sender === 'user' || message.sender === 'bot')
