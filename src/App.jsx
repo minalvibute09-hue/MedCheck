@@ -96,12 +96,13 @@ function MedCheckDashboard({ currentUser, accessToken, conversationId, onLogout 
     window.speechSynthesis.speak(utterance);
   };
 
-  const handleRecordSelected = (record) => {
+  const handleRecordSelected = (record, alreadySaved = false) => {
     setActiveRecord(record);
+    if (alreadySaved) setActivePanelTab('ocr');
     if (!recordsList.some(r => r.id === record.id)) {
       setRecordsList(prev => [record, ...prev]);
     }
-    if (!sampleRecords.some((sample) => sample.id === record.id)) {
+    if (!alreadySaved && !sampleRecords.some((sample) => sample.id === record.id)) {
       saveMedicalRecord(accessToken, record).catch((error) => {
         console.error('Could not save medical record:', error);
         setRecordsError(t.recordsSyncFailed);
@@ -250,6 +251,7 @@ function MedCheckDashboard({ currentUser, accessToken, conversationId, onLogout 
               t={t}
               isDemoMode={isDemoMode}
               accessToken={accessToken}
+              currentLang={currentLang}
             />
 
             {/* Caregiver Quick Action Card */}

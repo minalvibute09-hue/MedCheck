@@ -84,7 +84,13 @@ Passwords are hashed with bcrypt; the browser stores a signed-in JWT in local st
 
 ### Gemini and voice
 
-The Express API sends chat questions, selected record context, and uploaded document content to Google Gemini for processing. Document uploads are limited to 8 MB. Keep the API key only in server environment variables; never add it to browser code or a `VITE_` variable. Check extracted medicine names, doses, dates, and lab values against the scan; handwriting can be unclear and AI can make mistakes.
+The Express API sends chat questions, selected record context, and uploaded document content to Google Gemini for processing. Authenticated document uploads accept JPG, PNG, WebP, and PDF files up to 10 MB. Uploaded records are saved to MongoDB before being shown in the interface. Images are rotated using their EXIF orientation and resized before Gemini processing. Keep the API key only in server environment variables; never add it to browser code or a `VITE_` variable. Check extracted medicine names, doses, dates, and lab values against the scan; handwriting can be unclear and AI can make mistakes.
+
+Run focused document extraction tests with:
+
+```powershell
+npm run test:scan
+```
 
 Voice chat uses the browser's built-in Web Speech API and requires microphone permission in Chrome or Edge. Open the chat, select English, Hindi, or Telugu, tap the microphone, speak, and tap it again to finish. The chat answer is then read aloud; tap the speaking button to stop playback. If the microphone is blocked, allow it for the local site in browser settings and reload the page.
 

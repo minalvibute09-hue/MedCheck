@@ -24,7 +24,7 @@ const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
 
 app.disable('x-powered-by');
 app.use(cors({ origin: allowedOrigins }));
-app.use(express.json({ limit: '12mb' }));
+app.use(express.json({ limit: '2mb' }));
 
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 app.use('/api/auth', authRoutes);

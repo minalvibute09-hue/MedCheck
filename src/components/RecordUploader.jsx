@@ -57,20 +57,81 @@ export default function RecordUploader({
   activeRecordId, 
   t,
   isDemoMode,
-  accessToken
+  accessToken,
+  currentLang
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressStep, setProgressStep] = useState("");
   const [previewUrl, setPreviewUrl] = useState('');
   const [uploadError, setUploadError] = useState('');
+  const [cameraStream, setCameraStream] = useState(null);
+  const cameraUnavailableRef = useRef(t.cameraUnavailable);
+  const videoRef = useRef(null);
   const fileInputRef = useRef(null);
   const documentInputRef = useRef(null);
+
+  cameraUnavailableRef.current = t.cameraUnavailable;
+
+  useEffect(() => {
+    if (!cameraStream || !videoRef.current) return undefined;
+    videoRef.current.srcObject = cameraStream;
+    videoRef.current.play().catch((error) => {
+      console.error('Could not start the document camera preview:', error);
+      setUploadError(cameraUnavailableRef.current);
+    });
+    return () => {
+      cameraStream.getTracks().forEach((track) => track.stop());
+    };
+  }, [cameraStream]);
 
   useEffect(() => {
     if (!previewUrl) return undefined;
     return () => URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
+
+  const openCamera = async () => {
+    setUploadError('');
+    if (!navigator.mediaDevices?.getUserMedia) {
+      fileInputRef.current?.click();
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: { ideal: 'environment' } }
+      });
+      setCameraStream(stream);
+    } catch (error) {
+      console.error('Could not open the document camera:', error);
+      setUploadError(t.cameraUnavailable);
+    }
+  };
+
+  const captureCameraPhoto = async () => {
+    const video = videoRef.current;
+    if (!video?.videoWidth || !video.videoHeight) {
+      setUploadError(t.cameraUnavailable);
+      return;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext('2d');
+    if (!context) {
+      setUploadError(t.cameraUnavailable);
+      return;
+    }
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const photo = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+    if (!photo) {
+      setUploadError(t.cameraUnavailable);
+      return;
+    }
+    const file = new File([photo], `prescription-${Date.now()}.jpg`, { type: 'image/jpeg' });
+    setCameraStream(null);
+    handleFileUpload(file);
+  };
 
   const handleSelectSample = (recordId) => {
     const found = sampleRecords.find(r => r.id === recordId);
@@ -86,13 +147,12 @@ export default function RecordUploader({
 
   const handleFileUpload = async (file) => {
     if (!file) return;
-    if (file.size > 8 * 1024 * 1024) {
+    if (file.size > 10 * 1024 * 1024) {
       setUploadError(t.uploadTooLarge);
       return;
     }
     const extensionMimeTypes = {
       pdf: 'application/pdf',
-      txt: 'text/plain',
       jpg: 'image/jpeg',
       jpeg: 'image/jpeg',
       png: 'image/png',
@@ -100,43 +160,47 @@ export default function RecordUploader({
     };
     const extension = file.name.split('.').pop()?.toLowerCase();
     const mimeType = file.type || extensionMimeTypes[extension] || '';
-    if (!['application/pdf', 'text/plain', 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'].includes(mimeType)) {
-      setUploadError(t.uploadFailed);
+    if (!['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(mimeType)) {
+      setUploadError(t.uploadWrongType);
       return;
     }
     setUploadError('');
-    setPreviewUrl(file.type.startsWith('image/') ? URL.createObjectURL(file) : '');
+    setPreviewUrl(mimeType.startsWith('image/') ? URL.createObjectURL(file) : '');
     setIsProcessing(true);
     setProgressStep(t.readingDocument);
 
     try {
       setProgressStep(t.processingExtract);
-      let document;
-      if (mimeType === 'text/plain') {
-        document = { fileName: file.name, mimeType, text: await file.text() };
-      } else {
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        let binary = '';
-        const chunkSize = 0x8000;
-        for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-          binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
-        }
-        document = {
-          fileName: file.name,
-          mimeType,
-          data: window.btoa(binary)
-        };
-      }
-
       setProgressStep(t.processingValidate);
-      const { record } = await extractMedicalDocument(accessToken, document);
-      onRecordSelected(record);
+      const language = { en: 'en-IN', hi: 'hi-IN', te: 'te-IN' }[currentLang] || 'en-IN';
+      const result = await extractMedicalDocument(accessToken, file, language);
+      if (!result.readable) {
+        setUploadError(t.uploadUnreadable);
+        return;
+      }
+      onRecordSelected(result.record, true);
     } catch (err) {
       console.error('Document extraction failed:', err);
-      setUploadError(err.message || t.uploadFailed);
+      setUploadError(
+        err.status === 413
+          ? t.uploadTooLarge
+          : err.status === 415
+            ? t.uploadWrongType
+            : err.message?.includes('Cannot reach the MedCheck API')
+              ? t.uploadBackendUnavailable
+              : err.message || t.uploadFailed
+      );
     } finally {
       setIsProcessing(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (documentInputRef.current) documentInputRef.current.value = '';
     }
+  };
+
+  const handleFileInputChange = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (file) handleFileUpload(file);
   };
 
   const handleDrop = (e) => {
@@ -186,14 +250,14 @@ export default function RecordUploader({
           accept="image/*"
           capture="environment"
           className="hidden"
-          onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+          onChange={handleFileInputChange}
         />
         <input
           ref={documentInputRef}
           type="file"
-          accept=".pdf,.txt,image/*"
+          accept="image/*,application/pdf"
           className="hidden"
-          onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+          onChange={handleFileInputChange}
         />
 
         {isProcessing ? (
@@ -203,6 +267,34 @@ export default function RecordUploader({
             <div className="space-y-1.5 max-w-xs mx-auto">
               <Skeleton className="h-1.5 w-full rounded-full" />
               <Skeleton className="h-1.5 w-3/4 mx-auto rounded-full" />
+            </div>
+          </div>
+        ) : cameraStream ? (
+          <div className="space-y-3">
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
+              aria-label={t.cameraPreview}
+              className="mx-auto max-h-80 w-full rounded-xl bg-slate-950 object-contain"
+            />
+            <div className="flex flex-wrap justify-center gap-2">
+              <button
+                type="button"
+                onClick={captureCameraPhoto}
+                className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-teal-800 px-4 text-base font-bold text-white hover:bg-teal-900"
+              >
+                <Camera className="h-5 w-5" />
+                {t.cameraCapture}
+              </button>
+              <button
+                type="button"
+                onClick={() => setCameraStream(null)}
+                className="min-h-12 rounded-xl border border-slate-400 bg-white px-4 text-base font-bold text-slate-900 hover:bg-slate-50"
+              >
+                {t.cameraCancel}
+              </button>
             </div>
           </div>
         ) : (
@@ -224,10 +316,11 @@ export default function RecordUploader({
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation();
-                  fileInputRef.current?.click();
+                  openCamera();
                 }}
-                className="min-h-12 rounded-xl bg-teal-800 px-4 text-base font-bold text-white hover:bg-teal-900"
+                className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-teal-800 px-4 text-base font-bold text-white hover:bg-teal-900"
               >
+                <Camera className="h-5 w-5" />
                 {t.uploadCamera}
               </button>
               <button

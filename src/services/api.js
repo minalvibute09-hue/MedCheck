@@ -1,4 +1,5 @@
 const TOKEN_KEY = 'medcheck.accessToken';
+const API_BASE_URL = '/api';
 
 export function getAccessToken() {
   return localStorage.getItem(TOKEN_KEY);
@@ -14,14 +15,14 @@ export function clearAccessToken() {
 
 async function request(path, { token, ...options } = {}) {
   const headers = new Headers(options.headers || {});
-  if (options.body && !headers.has('Content-Type')) {
+  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
   let response;
   try {
-    response = await fetch(`/api${path}`, { ...options, headers });
+    response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
   } catch {
     throw new Error('Cannot reach the MedCheck API. Start the API server and try again.');
   }
@@ -69,11 +70,14 @@ export function saveMedicalRecord(token, record) {
   });
 }
 
-export function extractMedicalDocument(token, document) {
+export function extractMedicalDocument(token, file, language) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('language', language);
   return request('/records/extract', {
     method: 'POST',
     token,
-    body: JSON.stringify(document)
+    body: formData
   });
 }
 

@@ -7,6 +7,7 @@
     "dev": "vite",
     "dev:api": "node --watch server/src/server.js",
     "build": "vite build",
+    "test:scan": "node --test server/src/services/documentExtraction.test.js server/src/controllers/documentController.test.js",
     "start:api": "node server/src/server.js",
     "preview": "vite preview"
   },
@@ -19,9 +20,11 @@
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1.55.0",
     "mongoose": "^9.11.1",
+    "multer": "^2.4.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "recharts": "^3.10.1"
+    "recharts": "^3.10.1",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Eye, Copy, Check, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 export default function DocumentViewer({ record, t }) {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState('raw');
+
+  useEffect(() => {
+    setActiveTab(record?.extractionNotice ? 'parsed' : 'raw');
+  }, [record?.id, record?.extractionNotice]);
 
   if (!record) {
     return (
@@ -30,7 +34,7 @@ export default function DocumentViewer({ record, t }) {
             {t.tabOcr}
           </span>
           <span className="text-[11px] font-mono bg-white text-slate-700 px-2.5 py-0.5 rounded-md border border-slate-200">
-            {record.scanType}
+            {[record.type?.replaceAll('_', ' '), record.date, record.scanType].filter(Boolean).join(' · ')}
           </span>
         </div>
 
@@ -88,6 +92,16 @@ export default function DocumentViewer({ record, t }) {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {record.plainSummary && (
+              <p className="col-span-full rounded-xl border border-teal-200 bg-teal-50 p-4 text-base leading-relaxed text-teal-950">
+                {Object.values(record.plainSummary).find(Boolean)}
+              </p>
+            )}
+            {record.extractionNotice && (
+              <p className="col-span-full rounded-xl border border-slate-300 bg-slate-50 p-3 text-base text-slate-800">
+                {t.safetyShort}
+              </p>
+            )}
             
             {/* Extracted Diagnoses */}
             <div className="rounded-xl border border-slate-300 bg-slate-50 p-4">

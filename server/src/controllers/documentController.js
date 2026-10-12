@@ -1,35 +1,67 @@
+import multer from 'multer';
+import { saveMedicalRecord } from '../models/MedicalRecord.js';
 import {
   extractMedicalDocument,
   isSupportedDocumentMimeType
 } from '../services/documentExtraction.js';
 
-const maxEncodedDocumentLength = 11 * 1024 * 1024;
+const maxFileSize = 10 * 1024 * 1024;
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: maxFileSize, files: 1, fields: 1, fieldSize: 20 },
+  fileFilter(_req, file, callback) {
+    if (!isSupportedDocumentMimeType(file.mimetype)) {
+      const error = new Error('Upload a JPG, PNG, WebP image, or PDF.');
+      error.status = 415;
+      callback(error);
+      return;
+    }
+    callback(null, true);
+  }
+});
+
+export function receiveDocument(req, res, next) {
+  upload.single('file')(req, res, (error) => {
+    if (!error) return next();
+    if (error instanceof multer.MulterError) {
+      error.status = error.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+      error.message = error.code === 'LIMIT_FILE_SIZE'
+        ? 'The file is too large. Choose a file up to 10 MB.'
+        : 'Upload one document file and choose one language.';
+    }
+    return next(error);
+  });
+}
+
+function safeFileName(fileName) {
+  return fileName.replace(/[\\/\0]/gu, '_').slice(0, 180) || 'Medical document';
+}
 
 export async function extract(req, res, next) {
-  const { fileName, mimeType, data, text } = req.body || {};
-  if (typeof fileName !== 'string' || !fileName.trim() || fileName.length > 255) {
-    return res.status(400).json({ error: 'Choose a document with a valid file name.' });
-  }
-  if (typeof mimeType !== 'string' || !isSupportedDocumentMimeType(mimeType)) {
-    return res.status(415).json({ error: 'Upload a PDF, photo, or plain-text document.' });
-  }
-  if (mimeType === 'text/plain') {
-    if (typeof text !== 'string' || !text.trim() || text.length > 100000) {
-      return res.status(400).json({ error: 'The text document is empty or too large to read.' });
-    }
-  } else if (
-    typeof data !== 'string' ||
-    data.length === 0 ||
-    data.length > maxEncodedDocumentLength ||
-    !/^[A-Za-z0-9+/]+={0,2}$/u.test(data)
-  ) {
-    return res.status(400).json({ error: 'The document is empty, invalid, or too large. Choose a file under 8 MB.' });
+  if (!req.file) {
+    return res.status(400).json({ error: 'Choose a photo or PDF to scan.' });
   }
 
+  const language = req.body.language || 'en-IN';
   try {
-    const record = await extractMedicalDocument({ fileName, mimeType, data, text });
-    return res.json({ record });
+    const result = await extractMedicalDocument({
+      data: req.file.buffer,
+      mimeType: req.file.mimetype,
+      fileName: safeFileName(req.file.originalname),
+      patientId: req.user.id,
+      language
+    });
+    if (!result.readable) {
+      return res.json({
+        readable: false,
+        message: 'The photo is hard to read. Please retake it in good light with the paper flat.'
+      });
+    }
+
+    await saveMedicalRecord(req.user.id, result.record);
+    return res.status(201).json(result);
   } catch (error) {
+    if (!Number.isInteger(error.status) || error.status >= 500) error.status = 502;
     return next(error);
   }
 }
