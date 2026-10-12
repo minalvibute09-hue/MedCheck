@@ -1,0 +1,234 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Noto Sans", "Noto Sans Devanagari", "Noto Sans Telugu", system-ui, sans-serif;
+  --text-xs: 1rem;
+  --text-sm: 1rem;
+  --text-base: 1.125rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2rem;
+}
+
+@layer base {
+  :root {
+    --color-canvas: #f4f8f8;
+    --color-surface: #ffffff;
+    --color-surface-muted: #edf4f4;
+    --color-ink: #17333a;
+    --color-muted: #48636a;
+    --color-primary: #087e83;
+    --color-primary-hover: #06666b;
+    --color-border: #cbdada;
+    --color-normal: #176b42;
+    --color-attention: #855400;
+    --color-critical: #a12b32;
+    --space-card: 1.5rem;
+    --radius-card: 1.25rem;
+    --shadow-card: 0 8px 24px rgb(23 51 58 / 7%);
+    --background: 180 25% 97%;
+    --foreground: 192 42% 16%;
+    --card: 0 0% 100%;
+    --card-foreground: 192 42% 16%;
+    --primary: 182 88% 27%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 180 22% 94%;
+    --secondary-foreground: 192 42% 16%;
+    --muted: 180 22% 94%;
+    --muted-foreground: 192 19% 34%;
+    --accent: 180 22% 94%;
+    --accent-foreground: 192 42% 16%;
+    --destructive: 356 58% 40%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 180 18% 83%;
+    --ring: 182 88% 27%;
+    --radius: 1.25rem;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.65;
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  button, input, select, textarea {
+    font: inherit;
+  }
+
+  button, a, input, select, textarea {
+    scroll-margin-top: 7rem;
+  }
+
+  :focus-visible {
+    outline: 3px solid #087e83;
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    background: #b8e4e3;
+    color: #17333a;
+  }
+
+  code, pre {
+    font-family: ui-monospace, "Cascadia Code", monospace;
+  }
+}
+
+@layer utilities {
+  .text-xs, .text-sm {
+    line-height: 1.6;
+  }
+
+  .glass-card {
+    border-radius: var(--radius-card);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
+  }
+
+  .glass-panel {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+  }
+
+  .glass-pill {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+  }
+}
+
+/* Keep established utility classes while using the shared healthcare tokens. */
+.glass-card {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  box-shadow: var(--shadow-card);
+}
+
+.glass-panel {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+.glass-pill {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+/* Subtle Animated Laser Scanner for Drag & Drop Zone */
+@keyframes laser-sweep {
+  0% {
+    top: 0%;
+    opacity: 0.2;
+  }
+  50% {
+    top: 96%;
+    opacity: 0.9;
+  }
+  100% {
+    top: 0%;
+    opacity: 0.2;
+  }
+}
+
+.scanner-laser {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(14, 165, 233, 0) 0%, rgba(14, 165, 233, 0.9) 50%, rgba(14, 165, 233, 0) 100%);
+  box-shadow: 0 0 12px 2px rgba(14, 165, 233, 0.6);
+  animation: laser-sweep 5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Animated Border Glow */
+@keyframes border-pulse {
+  0%, 100% {
+    border-color: rgba(14, 165, 233, 0.3);
+  }
+  50% {
+    border-color: rgba(14, 165, 233, 0.7);
+  }
+}
+
+.border-scanning {
+  animation: border-pulse 4s infinite ease-in-out;
+}
+
+/* Shimmer Skeleton Loader */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: #f1f5f9;
+}
+
+.skeleton-shimmer::after {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.6) 20%,
+    rgba(255, 255, 255, 0.8) 60%,
+    rgba(255, 255, 255, 0)
+  );
+  animation: shimmer 3s infinite;
+  content: '';
+}
+
+/* Subtle Pulse Glow */
+@keyframes soft-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.04); opacity: 0.85; }
+}
+
+.pulse-glow {
+  animation: soft-pulse 4s infinite ease-in-out;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.mobile-bottom-nav {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+
+@media (max-width: 639px) {
+  #root > div {
+    padding-bottom: 5.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
