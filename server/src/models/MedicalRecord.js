@@ -1,12 +1,25 @@
-import { getPool } from '../config/db.js';
+import mongoose from 'mongoose';
+
+const medicalRecordSchema = new mongoose.Schema({
+  userId: { type: String, required: true, index: true },
+  recordKey: { type: String, required: true, maxlength: 100 },
+  title: { type: String, required: true, maxlength: 255 },
+  recordData: { type: mongoose.Schema.Types.Mixed, required: true }
+}, { timestamps: true, versionKey: false });
+
+medicalRecordSchema.index({ userId: 1, recordKey: 1 }, { unique: true });
+medicalRecordSchema.index({ userId: 1, createdAt: -1 });
+
+const MedicalRecord = mongoose.models.MedicalRecord ||
+  mongoose.model('MedicalRecord', medicalRecordSchema);
 
 export async function listMedicalRecords(userId) {
-  const [rows] = await getPool().execute(
-    'SELECT record_key, record_data FROM medical_records WHERE user_id = ? ORDER BY created_at DESC',
-    [userId]
-  );
+  const rows = await MedicalRecord.find({ userId })
+    .sort({ createdAt: -1 })
+    .select('recordKey recordData')
+    .lean();
 
-  return rows.map(({ record_key: recordKey, record_data: recordData }) => ({
+  return rows.map(({ recordKey, recordData }) => ({
     ...recordData,
     id: recordData.id || recordKey
   }));
@@ -21,12 +34,12 @@ export async function saveMedicalRecord(userId, record) {
     throw error;
   }
 
-  const [result] = await getPool().execute(
-    `INSERT INTO medical_records (user_id, record_key, title, record_data)
-     VALUES (?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE title = VALUES(title), record_data = VALUES(record_data)`,
-    [userId, recordKey, title, JSON.stringify(record)]
+  await MedicalRecord.updateOne(
+    { userId, recordKey },
+    { $set: { title, recordData: record } },
+    { upsert: true, runValidators: true }
   );
-
-  return { id: result.insertId, recordKey };
+  return { recordKey };
 }
+
+export default MedicalRecord;

@@ -52,20 +52,15 @@ MedCheck helps Indian families manage their parents’ health, even when records
 
 ## 🚀 How to Run
 
-### MySQL-backed accounts, records, and chat
+### MongoDB-backed accounts, records, and chat
 
-The existing React/Vite interface now uses a separate Express API. The API creates the `medcheck` database on first start when its MySQL user has permission, and creates the tables. It stores registered accounts, uploaded/extracted record JSON, and chat messages. Demo records remain fictional and are not copied into the database automatically.
+The existing React/Vite interface uses a separate Express API and MongoDB database named `medcheck`. The API creates its collections and indexes on first start. It stores registered accounts, uploaded/extracted record JSON, and chat messages. Demo records remain fictional and are not copied into the database automatically.
 
-1. Install and start **MySQL 8.0+** locally. In MySQL Workbench or the MySQL shell, create a database and a dedicated local account. For example, change the placeholder password before running:
+Switching from MySQL does not migrate any existing MySQL accounts, records, or chat messages. Those remain in the old MySQL database; users must register again in MongoDB unless you perform a separately planned data migration.
 
-   ```sql
-   CREATE DATABASE medcheck CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-   CREATE USER 'medcheck_app'@'127.0.0.1' IDENTIFIED BY 'choose_a_local_password';
-   GRANT ALL PRIVILEGES ON medcheck.* TO 'medcheck_app'@'127.0.0.1';
-   ```
+1. Install and start **MongoDB Community Server** locally, or create a MongoDB Atlas cluster.
+2. Copy `server/.env.example` to `server/.env`. For a local installation, the default `MONGODB_URI=mongodb://127.0.0.1:27017/medcheck` works when MongoDB is running. For Atlas, replace it with your cluster connection string, database name `medcheck`, and credentials. Set `JWT_SECRET` to a unique random value at least 32 characters long, and configure `GEMINI_API_KEY` and `GEMINI_MODEL`. Do not commit either `.env` file.
 
-   (If you use a MySQL administrator account in `server/.env` for a local-only demo, the API can create the database itself.)
-2. Copy `server/.env.example` to `server/.env`, then set `MYSQL_USER`, `MYSQL_PASSWORD`, `JWT_SECRET`, `GEMINI_API_KEY`, and `GEMINI_MODEL`. Use a unique random `JWT_SECRET` with at least 32 characters. Do not commit either `.env` file.
 3. From the project root, open two terminals:
 
    ```powershell
@@ -81,8 +76,8 @@ The existing React/Vite interface now uses a separate Express API. The API creat
 4. Open `http://localhost:5173/`, create an account, and sign in. The Vite development server proxies `/api` calls to Express at `http://localhost:5000`.
 
 ```text
-Tables: users, medical_records, chat_messages
-Schema: server/database/schema.sql
+Collections: users, medicalrecords, chatmessages
+Models: server/src/models/
 ```
 
 Passwords are hashed with bcrypt; the browser stores a signed-in JWT in local storage. Private records and chat endpoints require that token. Use local/demo data only unless your deployment has appropriate consent, access controls, encryption, backups, and privacy review. Medical record JSON and chat messages contain sensitive information. This development setup is not a production deployment.

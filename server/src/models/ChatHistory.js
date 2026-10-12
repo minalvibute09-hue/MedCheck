@@ -1,31 +1,38 @@
-import { getPool } from '../config/db.js';
+import mongoose from 'mongoose';
+
+const chatMessageSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  conversationId: { type: String, required: true },
+  role: { type: String, enum: ['user', 'assistant'], required: true },
+  content: { type: String, required: true },
+  language: { type: String, required: true, maxlength: 10 }
+}, { timestamps: { createdAt: true, updatedAt: false }, versionKey: false });
+
+chatMessageSchema.index({ userId: 1, conversationId: 1, createdAt: -1 });
+
+const ChatMessage = mongoose.models.ChatMessage ||
+  mongoose.model('ChatMessage', chatMessageSchema);
 
 export async function listChatMessages(userId, conversationId) {
-  const [rows] = await getPool().execute(
-    `SELECT role, content, language, created_at
-     FROM chat_messages
-     WHERE user_id = ? AND conversation_id = ?
-     ORDER BY id DESC
-     LIMIT 100`,
-    [userId, conversationId]
-  );
-  return rows.reverse();
+  const rows = await ChatMessage.find({ userId, conversationId })
+    .sort({ createdAt: -1, _id: -1 })
+    .limit(100)
+    .select('role content language createdAt')
+    .lean();
+
+  return rows.reverse().map(({ role, content, language, createdAt }) => ({
+    role,
+    content,
+    language,
+    created_at: createdAt
+  }));
 }
 
 export async function saveChatExchange({ userId, conversationId, question, answer, language }) {
-  const connection = await getPool().getConnection();
-  try {
-    await connection.beginTransaction();
-    await connection.execute(
-      `INSERT INTO chat_messages (user_id, conversation_id, role, content, language)
-       VALUES (?, ?, 'user', ?, ?), (?, ?, 'assistant', ?, ?)`,
-      [userId, conversationId, question, language, userId, conversationId, answer, language]
-    );
-    await connection.commit();
-  } catch (error) {
-    await connection.rollback();
-    throw error;
-  } finally {
-    connection.release();
-  }
+  await ChatMessage.insertMany([
+    { userId, conversationId, role: 'user', content: question, language },
+    { userId, conversationId, role: 'assistant', content: answer, language }
+  ]);
 }
+
+export default ChatMessage;

@@ -9,7 +9,7 @@ export async function requireAuth(req, res, next) {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const user = await findUserById(payload.sub);
     if (!user) return res.status(401).json({ error: 'Your account is no longer available. Sign in again.' });
-    req.user = { id: user.id, fullName: user.full_name, email: user.email };
+    req.user = { id: user._id, fullName: user.fullName, email: user.email };
     return next();
   } catch (error) {
     if (error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError') {

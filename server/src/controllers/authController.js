@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { createUser, findUserByEmail, toPublicUser } from '../models/User.js';
 
 function createToken(user) {
-  return jwt.sign({ sub: user.id }, process.env.JWT_SECRET, {
+  return jwt.sign({ sub: user._id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '1d'
   });
 }
@@ -26,11 +26,11 @@ export async function register(req, res, next) {
 
   try {
     const passwordHash = await bcrypt.hash(password, 12);
-    const user = { id: randomUUID(), full_name: fullName, email };
-    await createUser({ id: user.id, fullName, email, passwordHash });
+    const user = { _id: randomUUID(), fullName, email };
+    await createUser({ id: user._id, fullName, email, passwordHash });
     return res.status(201).json({ token: createToken(user), user: toPublicUser(user) });
   } catch (error) {
-    if (error.code === 'ER_DUP_ENTRY') {
+    if (error.code === 11000) {
       return res.status(409).json({ error: 'An account with that email already exists.' });
     }
     return next(error);
@@ -47,7 +47,7 @@ export async function login(req, res, next) {
 
   try {
     const user = await findUserByEmail(email);
-    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
       return res.status(401).json({ error: 'Email or password is incorrect.' });
     }
     return res.json({ token: createToken(user), user: toPublicUser(user) });
